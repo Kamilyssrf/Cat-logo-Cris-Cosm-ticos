@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cris Cosméticos | Catálogo</title>
+<style>
+:root{--bg:#f8f5f1;--card:#fff;--text:#292521;--muted:#746d66;--accent:#a98968;--line:#e9e0d7}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,sans-serif}
+header{background:linear-gradient(135deg,#fff,#eee5dc);padding:35px 18px 25px;text-align:center;border-bottom:1px solid var(--line)}
+.logo{width:90px;height:90px;object-fit:contain;border-radius:50%;background:#fff;padding:8px;margin-bottom:8px}
+h1{margin:4px 0;font-size:28px}.subtitle{color:var(--muted);font-size:14px}
+nav{display:flex;gap:8px;overflow:auto;padding:12px 14px;background:#fff;position:sticky;top:0;z-index:5;border-bottom:1px solid var(--line)}
+nav button{border:1px solid var(--line);background:#fff;border-radius:20px;padding:9px 14px;white-space:nowrap}
+nav button.active{background:var(--accent);color:white}
+main{max-width:1100px;margin:auto;padding:22px 14px 70px}
+.search{width:100%;padding:14px 16px;border:1px solid var(--line);border-radius:14px;font-size:15px;margin-bottom:18px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:15px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:0 3px 14px #00000008}
+.photo{width:100%;aspect-ratio:1;object-fit:cover;background:#eee5dc}
+.info{padding:12px}.cat{font-size:11px;color:var(--accent);text-transform:uppercase;font-weight:bold}
+.name{font-weight:600;margin:5px 0}.desc{font-size:12px;color:var(--muted);min-height:30px}
+.price{font-size:18px;font-weight:bold;margin:10px 0}
+.buy,.adminBtn{width:100%;padding:10px;border:0;border-radius:11px;background:var(--accent);color:white;font-weight:bold;cursor:pointer}
+.adminBtn{width:auto;margin-bottom:15px}
+.admin{display:none;background:#fff;border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:20px}
+.admin.show{display:block}.form{display:grid;gap:9px}
+.form input,.form textarea{padding:11px;border:1px solid var(--line);border-radius:10px;font:inherit}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:9px}.actions{display:flex;gap:8px;flex-wrap:wrap}
+.secondary{background:#eee5dc!important;color:var(--text)!important}
+.productAdmin{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.small{font-size:12px;color:var(--muted)}.empty{text-align:center;padding:45px;color:var(--muted)}
+footer{text-align:center;padding:20px;color:var(--muted);font-size:12px}
+@media(max-width:420px){.grid{grid-template-columns:repeat(2,1fr)}.row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+<img class="logo" alt="Cris Cosméticos" src="logo-cris.jpg">
+<h1>Cris Cosméticos</h1>
+<div class="subtitle">Catálogo de produtos</div>
+</header>
+
+<nav id="categories"></nav>
+
+<main>
+<input id="search" class="search" placeholder="🔎 Procurar produto..." oninput="render()">
+
+<button class="adminBtn" onclick="toggleAdmin()">⚙️ Área da dinda</button>
+
+<section id="admin" class="admin">
+<h2>Gerenciar catálogo</h2>
+<p class="small">Adicione produtos pelo formulário abaixo. As alterações ficam salvas neste navegador.</p>
+<div class="form">
+<input id="pname" placeholder="Nome do produto">
+<div class="row">
+<input id="pprice" placeholder="Preço (ex.: 49,90)">
+<input id="pcat" placeholder="Categoria">
+</div>
+<textarea id="pdesc" placeholder="Descrição"></textarea>
+<input id="pimg" placeholder="URL da foto do produto">
+<div class="actions">
+<button class="buy" onclick="addProduct()">➕ Adicionar produto</button>
+<button class="buy secondary" onclick="resetProducts()">↩️ Restaurar exemplo</button>
+</div>
+</div>
+<div id="adminList"></div>
+</section>
+
+<section id="grid" class="grid"></section>
+<div id="empty" class="empty" style="display:none">Nenhum produto encontrado.</div>
+</main>
+
+<footer>© Cris Cosméticos • Consulte disponibilidade pelo WhatsApp</footer>
+
+<script>
+const WHATSAPP="5554991651573";
+
+const DEFAULT_PRODUCTS=[
+{id:1,name:"Produto em destaque",price:"Consultar",cat:"Destaques",desc:"Cadastre os produtos da Cris Cosméticos.",img:""},
+{id:2,name:"Novo produto",price:"Consultar",cat:"Novidades",desc:"Use a Área da dinda para adicionar produtos.",img:""}
+];
+
+let products=JSON.parse(localStorage.getItem("cris_products")||"null")||DEFAULT_PRODUCTS;
+let selectedCat="Todos";
+
+function save(){localStorage.setItem("cris_products",JSON.stringify(products));}
+
+function esc(s){
+return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+}
+
+function renderCats(){
+let cats=["Todos",...new Set(products.map(p=>p.cat).filter(Boolean))];
+document.getElementById("categories").innerHTML=cats.map(c=>
+`<button class="${c===selectedCat?"active":""}" onclick="selectedCat='${esc(c)}';renderCats();render()">${esc(c)}</button>`
+).join("");
+}
+
+function render(){
+renderCats();
+let q=document.getElementById("search").value.toLowerCase();
+let list=products.filter(p=>
+(selectedCat==="Todos"||p.cat===selectedCat)&&
+(p.name+" "+p.desc+" "+p.cat).toLowerCase().includes(q)
+);
+
+document.getElementById("empty").style.display=list.length?"none":"block";
+
+document.getElementById("grid").innerHTML=list.map(p=>`
+<article class="card">
+${p.img?`<img class="photo" src="${esc(p.img)}" alt="${esc(p.name)}">`:`<div class="photo"></div>`}
+<div class="info">
+<div class="cat">${esc(p.cat||"Produto")}</div>
+<div class="name">${esc(p.name)}</div>
+<div class="desc">${esc(p.desc||"")}</div>
+<div class="price">${esc(p.price||"Consultar")}</div>
+<button class="buy" onclick="order('${esc(p.name)}')">💬 Pedir pelo WhatsApp</button>
+</div>
+</article>`).join("");
+
+renderAdmin();
+}
+
+function order(name){
+let text=encodeURIComponent("Olá! Tenho interesse no produto: "+name);
+window.open("https://wa.me/"+WHATSAPP+"?text="+text,"_blank");
+}
+
+function addProduct(){
+let name=document.getElementById("pname").value.trim();
+if(!name){alert("Digite o nome do produto.");return;}
+
+products.push({
+id:Date.now(),
+name:name,
+price:document.getElementById("pprice").value.trim()||"Consultar",
+cat:document.getElementById("pcat").value.trim()||"Produtos",
+desc:document.getElementById("pdesc").value.trim(),
+img:document.getElementById("pimg").value.trim()
+});
+
+save();
+["pname","pprice","pcat","pdesc","pimg"].forEach(id=>document.getElementById(id).value="");
+render();
+}
+
+function removeProduct(id){
+if(confirm("Remover este produto?")){
+products=products.filter(p=>p.id!==id);
+save();
+render();
+}
+}
+
+function renderAdmin(){
+document.getElementById("adminList").innerHTML=products.map(p=>`
+<div class="productAdmin">
+<div><b>${esc(p.name)}</b><div class="small">${esc(p.cat)} • ${esc(p.price)}</div></div>
+<button class="secondary" onclick="removeProduct(${p.id})">🗑️</button>
+</div>`).join("");
+}
+
+function toggleAdmin(){
+document.getElementById("admin").classList.toggle("show");
+}
+
+function resetProducts(){
+if(confirm("Restaurar os produtos de exemplo?")){
+products=DEFAULT_PRODUCTS;
+save();
+render();
+}
+}
+
+render();
+</script>
+</body>
+</html>
