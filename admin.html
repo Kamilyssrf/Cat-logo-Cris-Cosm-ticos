@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Administração | Cris Cosméticos</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f7f3ef;
+      color: #332a25;
+    }
+
+    header {
+      background: #8f6b52;
+      color: white;
+      padding: 25px 20px;
+      text-align: center;
+    }
+
+    header h1 {
+      margin: 0 0 8px;
+    }
+
+    header p {
+      margin: 0;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: auto;
+      padding: 20px;
+    }
+
+    .aviso {
+      background: #fff8e8;
+      border: 1px solid #ead9ad;
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+
+    .acoes {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 12px 18px;
+      cursor: pointer;
+      font-weight: bold;
+      background: #8f6b52;
+      color: white;
+    }
+
+    button.secundario {
+      background: #ddd1c7;
+      color: #332a25;
+    }
+
+    .produtos {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 18px;
+    }
+
+    .produto {
+      background: white;
+      border-radius: 16px;
+      padding: 15px;
+      box-shadow: 0 3px 15px rgba(0,0,0,.08);
+    }
+
+    .produto img {
+      width: 100%;
+      height: 200px;
+      object-fit: contain;
+      background: #f3f0ed;
+      border-radius: 12px;
+      margin-bottom: 12px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: bold;
+      margin: 10px 0 5px;
+    }
+
+    input {
+      width: 100%;
+      padding: 11px;
+      border: 1px solid #d8cec5;
+      border-radius: 9px;
+      font-size: 15px;
+    }
+
+    .numero {
+      font-size: 12px;
+      color: #75665c;
+      margin-bottom: 5px;
+    }
+
+    #mensagem {
+      margin: 15px 0;
+      font-weight: bold;
+    }
+
+    .codigo {
+      display: none;
+      width: 100%;
+      min-height: 250px;
+      margin-top: 15px;
+      font-family: monospace;
+    }
+
+    .voltar {
+      display: inline-block;
+      margin-top: 15px;
+      color: white;
+      text-decoration: none;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <h1>⚙️ Administrar catálogo</h1>
+  <p>Cris Cosméticos</p>
+  <a class="voltar" href="./">← Voltar para o catálogo</a>
+</header>
+
+<div class="container">
+
+  <div class="aviso">
+    <strong>Área da administradora</strong><br>
+    Aqui você poderá editar os produtos. As alterações desta primeira versão
+    ficam salvas neste navegador. Para publicar as alterações para todos os
+    clientes, use o botão para gerar o arquivo <strong>produtos.js</strong>
+    e envie-o ao GitHub.
+  </div>
+
+  <div class="acoes">
+    <button onclick="salvar()">💾 Salvar alterações</button>
+    <button onclick="gerarArquivo()">📦 Gerar produtos.js</button>
+    <button class="secundario" onclick="restaurar()">↩️ Restaurar</button>
+  </div>
+
+  <div id="mensagem"></div>
+
+  <div id="produtos" class="produtos"></div>
+
+  <textarea id="codigo" class="codigo" readonly></textarea>
+
+</div>
+
+<script src="produtos.js"></script>
+
+<script>
+
+const CHAVE = "cris_cosmeticos_admin";
+
+let lista = JSON.parse(localStorage.getItem(CHAVE));
+
+if (!lista) {
+  lista = produtos.map(function(produto) {
+    return {...produto};
+  });
+}
+
+function mostrarProdutos() {
+
+  const area = document.getElementById("produtos");
+
+  area.innerHTML = "";
+
+  lista.forEach(function(produto, indice) {
+
+    const card = document.createElement("div");
+
+    card.className = "produto";
+
+    card.innerHTML = `
+
+      <div class="numero">
+        Produto ${String(indice + 1).padStart(2, "0")}
+      </div>
+
+      <img src="${produto.imagem}" alt="${produto.nome}">
+
+      <label>Nome do produto</label>
+
+      <input
+        value="${escapar(produto.nome)}"
+        onchange="alterar(${indice}, 'nome', this.value)"
+      >
+
+      <label>Categoria</label>
+
+      <input
+        value="${escapar(produto.categoria)}"
+        onchange="alterar(${indice}, 'categoria', this.value)"
+      >
+
+      <label>Preço</label>
+
+      <input
+        type="text"
+        inputmode="decimal"
+        value="${produto.preco}"
+        placeholder="Deixe vazio para consultar preço"
+        onchange="alterarPreco(${indice}, this.value)"
+      >
+
+      <label>Nome da foto</label>
+
+      <input
+        value="${escapar(produto.imagem)}"
+        onchange="alterar(${indice}, 'imagem', this.value)"
+      >
+
+    `;
+
+    area.appendChild(card);
+
+  });
+
+}
+
+function alterar(indice, campo, valor) {
+
+  lista[indice][campo] = valor;
+
+}
+
+function alterarPreco(indice, valor) {
+
+  valor = valor.trim().replace(",", ".");
+
+  if (valor === "") {
+
+    lista[indice].preco = "";
+
+  } else {
+
+    lista[indice].preco = Number(valor);
+
+  }
+
+}
+
+function salvar() {
+
+  localStorage.setItem(CHAVE, JSON.stringify(lista));
+
+  document.getElementById("mensagem").innerHTML =
+    "✅ Alterações salvas neste navegador.";
+
+}
+
+function restaurar() {
+
+  if (!confirm("Restaurar os dados atuais do catálogo?")) {
+    return;
+  }
+
+  lista = produtos.map(function(produto) {
+    return {...produto};
+  });
+
+  localStorage.removeItem(CHAVE);
+
+  mostrarProdutos();
+
+  document.getElementById("mensagem").innerHTML =
+    "↩️ Dados restaurados.";
+
+}
+
+function gerarArquivo() {
+
+  salvar();
+
+  let codigo = "const produtos = [\n";
+
+  lista.forEach(function(produto) {
+
+    codigo +=
+      "  { nome: " +
+      JSON.stringify(produto.nome) +
+      ", categoria: " +
+      JSON.stringify(produto.categoria) +
+      ", preco: " +
+      (produto.preco === "" ? '""' : Number(produto.preco).toFixed(2)) +
+      ", imagem: " +
+      JSON.stringify(produto.imagem) +
+      " },\n";
+
+  });
+
+  codigo += "];";
+
+  document.getElementById("codigo").value = codigo;
+
+  document.getElementById("codigo").style.display = "block";
+
+  const arquivo = new Blob(
+    [codigo],
+    {type: "text/javascript"}
+  );
+
+  const link = document.createElement("a");
+
+  link.href = URL.createObjectURL(arquivo);
+
+  link.download = "produtos.js";
+
+  link.click();
+
+  URL.revokeObjectURL(link.href);
+
+  document.getElementById("mensagem").innerHTML =
+    "✅ O arquivo produtos.js foi gerado.";
+
+}
+
+function escapar(texto) {
+
+  return String(texto)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+}
+
+mostrarProdutos();
+
+</script>
+
+</body>
+</html>
